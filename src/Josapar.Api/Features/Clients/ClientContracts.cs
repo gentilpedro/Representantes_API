@@ -43,3 +43,13 @@ public record ClientDetailResponse(
     IReadOnlyList<ClientOrderHistoryItemResponse> OrderHistory);
 
 public record FavoriteToggleRequest(bool IsFavorite);
+
+public record CreateClientRequest(
+    string Name,
+    string Cnpj,
+    string Phone,
+    string Mobile,
+    string Email,
+    decimal CreditLimit,
+    DeliveryAddressResponse DeliveryAddress,
+    string? Notes);

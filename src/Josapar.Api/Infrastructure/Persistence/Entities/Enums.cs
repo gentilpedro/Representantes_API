@@ -38,3 +38,24 @@ public enum LeadStatus
     Converted,
     Lost,
 }
+
+public enum VisitStatus
+{
+    Pending,
+    InProgress,
+    Completed,
+}
+
+public enum NotificationCategory
+{
+    Order,
+    Promotion,
+    Announcement,
+    Launch,
+}
+
+public enum PermissionStatus
+{
+    Granted,
+    Restricted,
+}

@@ -125,6 +125,104 @@ public static class DbInitializer
         }
 
         await db.SaveChangesAsync();
+
+        var representative = await db.Representatives.SingleAsync(r => r.MatriculaCode == "88294");
+        var clients = await db.Clients.OrderBy(c => c.Code).ToListAsync();
+
+        var now = DateTime.UtcNow;
+
+        if (!await db.RepresentativeGoals.AnyAsync(g => g.RepresentativeId == representative.Id
+            && g.Year == now.Year && g.Month == now.Month))
+        {
+            db.RepresentativeGoals.Add(new RepresentativeGoal
+            {
+                Id = Guid.NewGuid(),
+                RepresentativeId = representative.Id,
+                Year = now.Year,
+                Month = now.Month,
+                TargetAmount = 15_000m,
+                CreatedAtUtc = now,
+            });
+        }
+
+        if (!await db.Visits.AnyAsync(v => v.RepresentativeId == representative.Id))
+        {
+            var today = now.Date;
+            db.Visits.AddRange(
+                new Visit
+                {
+                    Id = Guid.NewGuid(),
+                    ClientId = clients[0].Id,
+                    RepresentativeId = representative.Id,
+                    ScheduledAtUtc = today.AddHours(9),
+                    Status = VisitStatus.Completed,
+                    Notes = "Cliente confirmou reposição mensal.",
+                    CheckInAtUtc = today.AddHours(9).AddMinutes(5),
+                    CheckInLatitude = -30.0346,
+                    CheckInLongitude = -51.2177,
+                    IsGeoValidated = true,
+                    CheckOutAtUtc = today.AddHours(9).AddMinutes(40),
+                    CreatedAtUtc = now,
+                },
+                new Visit
+                {
+                    Id = Guid.NewGuid(),
+                    ClientId = clients[1].Id,
+                    RepresentativeId = representative.Id,
+                    ScheduledAtUtc = today.AddHours(11),
+                    Status = VisitStatus.Pending,
+                    CreatedAtUtc = now,
+                },
+                new Visit
+                {
+                    Id = Guid.NewGuid(),
+                    ClientId = clients[2].Id,
+                    RepresentativeId = representative.Id,
+                    ScheduledAtUtc = today.AddHours(15),
+                    Status = VisitStatus.Pending,
+                    CreatedAtUtc = now,
+                });
+        }
+
+        if (!await db.Notifications.AnyAsync(n => n.RepresentativeId == representative.Id))
+        {
+            db.Notifications.AddRange(
+                new Notification
+                {
+                    Id = Guid.NewGuid(),
+                    RepresentativeId = representative.Id,
+                    Category = NotificationCategory.Order,
+                    Title = "Pedido sincronizado",
+                    Message = "Seu pedido para Mercado Bom Preço foi enviado com sucesso.",
+                    IsUrgent = false,
+                    IsRead = false,
+                    CreatedAtUtc = now.AddHours(-2),
+                },
+                new Notification
+                {
+                    Id = Guid.NewGuid(),
+                    RepresentativeId = representative.Id,
+                    Category = NotificationCategory.Announcement,
+                    Title = "Manutenção programada",
+                    Message = "O sistema ficará indisponível das 22h às 23h para manutenção.",
+                    IsUrgent = true,
+                    IsRead = false,
+                    CreatedAtUtc = now.AddHours(-6),
+                },
+                new Notification
+                {
+                    Id = Guid.NewGuid(),
+                    RepresentativeId = representative.Id,
+                    Category = NotificationCategory.Promotion,
+                    Title = "Nova promoção de Arroz Integral",
+                    Message = "Desconto especial em Arroz Integral 1kg até o fim do mês.",
+                    IsUrgent = false,
+                    IsRead = true,
+                    CreatedAtUtc = now.AddDays(-3),
+                });
+        }
+
+        await db.SaveChangesAsync();
     }
 
     private static Product NewProduct(

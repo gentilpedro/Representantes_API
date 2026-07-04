@@ -10,6 +10,9 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
     public DbSet<Client> Clients => Set<Client>();
     public DbSet<Order> Orders => Set<Order>();
     public DbSet<Lead> Leads => Set<Lead>();
+    public DbSet<Visit> Visits => Set<Visit>();
+    public DbSet<RepresentativeGoal> RepresentativeGoals => Set<RepresentativeGoal>();
+    public DbSet<Notification> Notifications => Set<Notification>();
 
     protected override void ConfigureConventions(ModelConfigurationBuilder configurationBuilder)
     {
@@ -50,6 +53,18 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
                 .WithOne()
                 .HasForeignKey(i => i.OrderId)
                 .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<Visit>(entity =>
+        {
+            entity.HasOne(v => v.Client)
+                .WithMany()
+                .HasForeignKey(v => v.ClientId);
+        });
+
+        modelBuilder.Entity<RepresentativeGoal>(entity =>
+        {
+            entity.HasIndex(g => new { g.RepresentativeId, g.Year, g.Month }).IsUnique();
         });
     }
 }

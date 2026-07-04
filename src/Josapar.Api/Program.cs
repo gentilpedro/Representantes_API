@@ -1,8 +1,13 @@
+using Josapar.Api.Features.Agenda;
 using Josapar.Api.Features.Auth;
 using Josapar.Api.Features.Catalog;
 using Josapar.Api.Features.Clients;
+using Josapar.Api.Features.Dashboard;
 using Josapar.Api.Features.Leads;
+using Josapar.Api.Features.Notifications;
 using Josapar.Api.Features.Orders;
+using Josapar.Api.Features.Profile;
+using Josapar.Api.Features.Reports;
 using Josapar.Api.Infrastructure.Auth;
 using Josapar.Api.Infrastructure.Persistence;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
@@ -83,5 +88,11 @@ app.MapGroup("/api/products").MapCatalogEndpoints().RequireAuthorization();
 app.MapGroup("/api/clients").MapClientEndpoints().RequireAuthorization();
 app.MapGroup("/api/orders").MapOrderEndpoints().RequireAuthorization();
 app.MapGroup("/api/leads").MapLeadEndpoints().RequireAuthorization();
+app.MapGroup("/api/agenda").MapAgendaEndpoints().RequireAuthorization();
+app.MapGroup("/api/visits").MapVisitEndpoints().RequireAuthorization();
+app.MapGroup("/api/dashboard").MapDashboardEndpoints().RequireAuthorization();
+app.MapGroup("/api/reports").MapReportsEndpoints().RequireAuthorization();
+app.MapGroup("/api/notifications").MapNotificationEndpoints().RequireAuthorization();
+app.MapGroup("/api/profile").MapProfileEndpoints().RequireAuthorization();
 
 app.Run();

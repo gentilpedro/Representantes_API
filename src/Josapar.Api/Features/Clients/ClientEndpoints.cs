@@ -11,9 +11,59 @@ public static class ClientEndpoints
     {
         app.MapGet("/", ListClientsAsync);
         app.MapGet("/{id:guid}", GetClientDetailAsync);
+        app.MapPost("/", CreateClientAsync);
         app.MapPatch("/{id:guid}/favorite", ToggleFavoriteAsync);
 
         return app;
+    }
+
+    private static async Task<IResult> CreateClientAsync(CreateClientRequest request, AppDbContext db)
+    {
+        if (await db.Clients.AnyAsync(c => c.Cnpj == request.Cnpj))
+        {
+            return Results.Conflict("Já existe um cliente cadastrado com esse CNPJ.");
+        }
+
+        var client = new Client
+        {
+            Id = Guid.NewGuid(),
+            Code = await GenerateUniqueCodeAsync(db),
+            Name = request.Name,
+            Cnpj = request.Cnpj,
+            Tier = ClientTier.Regular,
+            Phone = request.Phone,
+            Mobile = request.Mobile,
+            Email = request.Email,
+            CreditLimit = request.CreditLimit,
+            CreditUsedPercent = 0,
+            DeliveryAddress = new DeliveryAddress
+            {
+                Street = request.DeliveryAddress.Street,
+                District = request.DeliveryAddress.District,
+                City = request.DeliveryAddress.City,
+                State = request.DeliveryAddress.State,
+            },
+            Notes = request.Notes,
+            IsFavorite = false,
+            CreatedAtUtc = DateTime.UtcNow,
+        };
+
+        db.Clients.Add(client);
+        await db.SaveChangesAsync();
+
+        return Results.Created($"/api/clients/{client.Id}", ToDetailResponse(client, []));
+    }
+
+    private static async Task<string> GenerateUniqueCodeAsync(AppDbContext db)
+    {
+        string code;
+        do
+        {
+            code = Random.Shared.Next(1000, 9999).ToString();
+        }
+        while (await db.Clients.AnyAsync(c => c.Code == code));
+
+        return code;
     }
 
     private static async Task<IResult> ListClientsAsync(AppDbContext db)
