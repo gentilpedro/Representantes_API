@@ -44,7 +44,8 @@ public static class DashboardEndpoints
             .AsNoTracking()
             .SingleOrDefaultAsync(g => g.RepresentativeId == representativeId && g.Year == now.Year && g.Month == now.Month);
         var monthlyGoalTarget = goal?.TargetAmount ?? 0;
-        var monthlyGoalPercent = monthlyGoalTarget == 0 ? 0 : monthlyGoalAchieved / monthlyGoalTarget * 100;
+        // Fração 0-1 (não *100) — o client formata como percentual na exibição.
+        var monthlyGoalPercent = monthlyGoalTarget == 0 ? 0 : monthlyGoalAchieved / monthlyGoalTarget;
 
         var monthlySeries = await SalesAggregationHelper.GetTrailingMonthlySalesAsync(db, representativeId, monthStart, 6);
 

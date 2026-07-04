@@ -81,7 +81,7 @@ public static class ReportsEndpoints
             new ReportKpiResponse("Vendas Totais", totalSales, GrowthPercent(totalSales, totalSalesPrev)),
             new ReportKpiResponse("Clientes Ativos", activeClients, GrowthPercent(activeClients, activeClientsPrev)),
             new ReportKpiResponse("Ticket Médio", averageTicket, GrowthPercent(averageTicket, averageTicketPrev)),
-            new ReportKpiResponse("Meta Atingida", goalAchievementPercent, goalAchievementPercent - goalAchievementPercentPrev),
+            new ReportKpiResponse("Meta Atingida", goalAchievementPercent, (goalAchievementPercent - goalAchievementPercentPrev) * 100),
             salesTrend,
             topProducts,
             regionMix,
@@ -97,7 +97,8 @@ public static class ReportsEndpoints
         var goal = await db.RepresentativeGoals.AsNoTracking()
             .SingleOrDefaultAsync(g => g.RepresentativeId == representativeId && g.Year == monthStart.Year && g.Month == monthStart.Month);
         var target = goal?.TargetAmount ?? 0;
-        return target == 0 ? 0 : achieved / target * 100;
+        // Fração 0-1 (não *100) — o client formata como percentual na exibição.
+        return target == 0 ? 0 : achieved / target;
     }
 
     private static async Task<List<RegionMixResponse>> GetRegionMixAsync(
@@ -112,8 +113,9 @@ public static class ReportsEndpoints
 
         if (totalSales == 0) return [];
 
+        // Fração 0-1 (não *100) — o client formata como percentual na exibição.
         return byRegion
-            .Select(r => new RegionMixResponse(r.State, r.Amount / totalSales * 100))
+            .Select(r => new RegionMixResponse(r.State, r.Amount / totalSales))
             .OrderByDescending(r => r.Percent)
             .ToList();
     }
