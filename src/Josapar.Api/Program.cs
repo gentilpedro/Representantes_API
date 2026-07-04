@@ -24,14 +24,14 @@ JwtSecurityTokenHandler.DefaultMapInboundClaims = false;
 
 var builder = WebApplication.CreateBuilder(args);
 
-var connectionString = builder.Configuration.GetConnectionString("MySql");
+var connectionString = builder.Configuration.GetConnectionString("Postgres");
 if (string.IsNullOrWhiteSpace(connectionString))
 {
-    throw new InvalidOperationException("ConnectionStrings:MySql não configurada.");
+    throw new InvalidOperationException("ConnectionStrings:Postgres não configurada.");
 }
 
 builder.Services.AddDbContext<AppDbContext>(options =>
-    options.UseMySql(connectionString, ServerVersion.AutoDetect(connectionString)));
+    options.UseNpgsql(connectionString));
 
 builder.Services.AddSingleton<JwtTokenGenerator>();
 

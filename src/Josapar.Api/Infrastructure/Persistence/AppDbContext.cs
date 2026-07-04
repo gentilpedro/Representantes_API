@@ -24,7 +24,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
         modelBuilder.Entity<Representative>(entity =>
         {
             entity.HasIndex(r => r.MatriculaCode).IsUnique();
-            entity.HasIndex(r => r.Email).IsUnique().HasFilter("`Email` IS NOT NULL");
+            entity.HasIndex(r => r.Email).IsUnique().HasFilter("\"Email\" IS NOT NULL");
         });
 
         modelBuilder.Entity<Product>(entity =>
@@ -48,7 +48,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
             entity.HasIndex(o => o.Code).IsUnique();
             entity.HasIndex(o => new { o.RepresentativeId, o.ClientGeneratedId })
                 .IsUnique()
-                .HasFilter("`ClientGeneratedId` IS NOT NULL");
+                .HasFilter("\"ClientGeneratedId\" IS NOT NULL");
             entity.HasOne(o => o.Client)
                 .WithMany()
                 .HasForeignKey(o => o.ClientId);

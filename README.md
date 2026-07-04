@@ -4,7 +4,7 @@ API .NET 10 (Minimal APIs) que serve o app Flutter `josapar_representantes` — 
 
 ## Rodando localmente
 
-1. Suba o MySQL:
+1. Suba o Postgres:
    ```powershell
    copy .env.example .env
    # edite .env com senhas locais
@@ -15,7 +15,7 @@ API .NET 10 (Minimal APIs) que serve o app Flutter `josapar_representantes` — 
    ```powershell
    cd src/Josapar.Api
    dotnet user-secrets init
-   dotnet user-secrets set "ConnectionStrings:MySql" "Server=localhost;Port=3306;Database=josapar;User=josapar_app;Password=<mesma senha do .env>;"
+   dotnet user-secrets set "ConnectionStrings:Postgres" "Host=localhost;Port=5432;Database=josapar;Username=josapar_app;Password=<mesma senha do .env>;"
    dotnet user-secrets set "Jwt:SigningKey" "<uma string aleatória longa, só para dev>"
    ```
 3. Aplique as migrations e rode:

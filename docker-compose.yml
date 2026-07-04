@@ -1,23 +1,22 @@
 services:
-  mysql:
-    image: mysql:8.4
-    container_name: josapar-mysql
+  postgres:
+    image: postgres:16
+    container_name: josapar-postgres
     restart: unless-stopped
     environment:
-      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
-      MYSQL_DATABASE: ${MYSQL_DATABASE:-josapar}
-      MYSQL_USER: ${MYSQL_USER:-josapar_app}
-      MYSQL_PASSWORD: ${MYSQL_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB:-josapar}
+      POSTGRES_USER: ${POSTGRES_USER:-josapar_app}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
     ports:
-      - "3306:3306"
+      - "5432:5432"
     volumes:
-      - josapar_mysql_data:/var/lib/mysql
+      - josapar_postgres_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p${MYSQL_ROOT_PASSWORD}"]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-josapar_app} -d ${POSTGRES_DB:-josapar}"]
       interval: 5s
       timeout: 5s
       retries: 10
       start_period: 20s
 
 volumes:
-  josapar_mysql_data:
+  josapar_postgres_data:
