@@ -8,6 +8,7 @@ using Josapar.Api.Features.Notifications;
 using Josapar.Api.Features.Orders;
 using Josapar.Api.Features.Profile;
 using Josapar.Api.Features.Reports;
+using Josapar.Api.Features.Sync;
 using Josapar.Api.Infrastructure.Auth;
 using Josapar.Api.Infrastructure.Persistence;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
@@ -16,6 +17,7 @@ using Microsoft.IdentityModel.Tokens;
 using Scalar.AspNetCore;
 using System.IdentityModel.Tokens.Jwt;
 using System.Text;
+using System.Text.Json;
 using System.Text.Json.Serialization;
 
 JwtSecurityTokenHandler.DefaultMapInboundClaims = false;
@@ -59,7 +61,7 @@ builder.Services
 builder.Services.AddAuthorization();
 builder.Services.AddOpenApi();
 builder.Services.ConfigureHttpJsonOptions(options =>
-    options.SerializerOptions.Converters.Add(new JsonStringEnumConverter()));
+    options.SerializerOptions.Converters.Add(new JsonStringEnumConverter(JsonNamingPolicy.CamelCase)));
 
 const string WebAppCorsPolicy = "WebApp";
 var allowedOrigins = builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>() ?? [];
@@ -94,5 +96,6 @@ app.MapGroup("/api/dashboard").MapDashboardEndpoints().RequireAuthorization();
 app.MapGroup("/api/reports").MapReportsEndpoints().RequireAuthorization();
 app.MapGroup("/api/notifications").MapNotificationEndpoints().RequireAuthorization();
 app.MapGroup("/api/profile").MapProfileEndpoints().RequireAuthorization();
+app.MapGroup("/api/sync").MapSyncEndpoints().RequireAuthorization();
 
 app.Run();

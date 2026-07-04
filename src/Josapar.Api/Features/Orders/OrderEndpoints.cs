@@ -51,10 +51,11 @@ public static class OrderEndpoints
         if (error is not null) return error;
 
         var code = await GenerateUniqueCodeAsync(db, []);
+        var now = DateTime.UtcNow;
         var order = BuildOrder(
             client!, orderItems!, configuration, representativeId, request.Notes,
-            request.IsDraft ? OrderStatus.Draft : OrderStatus.Pending,
-            request.ClientGeneratedId, syncedAtUtc: null, code);
+            request.IsDraft ? OrderStatus.Draft : OrderStatus.Sent,
+            request.ClientGeneratedId, syncedAtUtc: request.IsDraft ? null : now, code);
 
         db.Orders.Add(order);
         await db.SaveChangesAsync();
