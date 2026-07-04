@@ -46,6 +46,9 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
         modelBuilder.Entity<Order>(entity =>
         {
             entity.HasIndex(o => o.Code).IsUnique();
+            entity.HasIndex(o => new { o.RepresentativeId, o.ClientGeneratedId })
+                .IsUnique()
+                .HasFilter("`ClientGeneratedId` IS NOT NULL");
             entity.HasOne(o => o.Client)
                 .WithMany()
                 .HasForeignKey(o => o.ClientId);

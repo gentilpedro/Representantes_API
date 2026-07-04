@@ -13,7 +13,7 @@ public static class OrderEndpoints
     {
         app.MapGet("/", ListOrdersAsync);
         app.MapPost("/", CreateOrderAsync);
-        app.MapPost("/sync", SyncPendingOrdersAsync);
+        app.MapPost("/batch-sync", BatchSyncOrdersAsync);
 
         return app;
     }
@@ -39,15 +39,89 @@ public static class OrderEndpoints
         AppDbContext db,
         IConfiguration configuration)
     {
-        if (request.Items.Count == 0)
+        var representativeId = user.GetRepresentativeId();
+
+        if (request.ClientGeneratedId is Guid clientGeneratedId)
         {
-            return Results.BadRequest("O pedido precisa de ao menos um item.");
+            var existing = await FindByClientGeneratedIdAsync(db, representativeId, clientGeneratedId);
+            if (existing is not null) return Results.Ok(ToResponse(existing));
         }
 
-        var client = await db.Clients.SingleOrDefaultAsync(c => c.Id == request.ClientId);
-        if (client is null) return Results.NotFound("Cliente não encontrado.");
+        var (client, orderItems, error) = await PrepareOrderAsync(db, request.ClientId, request.Items);
+        if (error is not null) return error;
 
-        var productIds = request.Items.Select(i => i.ProductId).ToList();
+        var code = await GenerateUniqueCodeAsync(db, []);
+        var order = BuildOrder(
+            client!, orderItems!, configuration, representativeId, request.Notes,
+            request.IsDraft ? OrderStatus.Draft : OrderStatus.Pending,
+            request.ClientGeneratedId, syncedAtUtc: null, code);
+
+        db.Orders.Add(order);
+        await db.SaveChangesAsync();
+
+        return Results.Created($"/api/orders/{order.Id}", ToResponse(order));
+    }
+
+    /// <summary>
+    /// Recebe a fila de pedidos criados offline e persiste os que ainda não existem no
+    /// servidor (idempotente via ClientGeneratedId — reenvios por falha de rede não duplicam).
+    /// </summary>
+    private static async Task<IResult> BatchSyncOrdersAsync(
+        IReadOnlyList<BatchSyncOrderRequest> requests,
+        ClaimsPrincipal user,
+        AppDbContext db,
+        IConfiguration configuration)
+    {
+        var representativeId = user.GetRepresentativeId();
+        var created = new List<OrderResponse>();
+        var alreadySynced = new List<OrderResponse>();
+        var usedCodes = new HashSet<string>();
+
+        foreach (var request in requests)
+        {
+            var existing = await FindByClientGeneratedIdAsync(db, representativeId, request.ClientGeneratedId);
+            if (existing is not null)
+            {
+                alreadySynced.Add(ToResponse(existing));
+                continue;
+            }
+
+            var (client, orderItems, error) = await PrepareOrderAsync(db, request.ClientId, request.Items);
+            if (error is not null) return error;
+
+            var code = await GenerateUniqueCodeAsync(db, usedCodes);
+            var order = BuildOrder(
+                client!, orderItems!, configuration, representativeId, request.Notes,
+                OrderStatus.Sent, request.ClientGeneratedId, syncedAtUtc: DateTime.UtcNow, code);
+
+            db.Orders.Add(order);
+            created.Add(ToResponse(order));
+        }
+
+        await db.SaveChangesAsync();
+
+        return Results.Ok(new BatchSyncResultResponse(created, alreadySynced));
+    }
+
+    private static Task<Order?> FindByClientGeneratedIdAsync(AppDbContext db, Guid representativeId, Guid clientGeneratedId) =>
+        db.Orders
+            .AsNoTracking()
+            .Include(o => o.Client)
+            .Include(o => o.Items)
+            .SingleOrDefaultAsync(o => o.RepresentativeId == representativeId && o.ClientGeneratedId == clientGeneratedId);
+
+    private static async Task<(Client? Client, List<OrderItem>? Items, IResult? Error)> PrepareOrderAsync(
+        AppDbContext db, Guid clientId, IReadOnlyList<CreateOrderItemRequest> items)
+    {
+        if (items.Count == 0)
+        {
+            return (null, null, Results.BadRequest("O pedido precisa de ao menos um item."));
+        }
+
+        var client = await db.Clients.SingleOrDefaultAsync(c => c.Id == clientId);
+        if (client is null) return (null, null, Results.NotFound("Cliente não encontrado."));
+
+        var productIds = items.Select(i => i.ProductId).ToList();
         var products = await db.Products
             .Where(p => productIds.Contains(p.Id))
             .ToDictionaryAsync(p => p.Id);
@@ -55,10 +129,10 @@ public static class OrderEndpoints
         var missingProductIds = productIds.Where(id => !products.ContainsKey(id)).ToList();
         if (missingProductIds.Count > 0)
         {
-            return Results.BadRequest($"Produto(s) não encontrado(s): {string.Join(", ", missingProductIds)}.");
+            return (null, null, Results.BadRequest($"Produto(s) não encontrado(s): {string.Join(", ", missingProductIds)}."));
         }
 
-        var orderItems = request.Items.Select(item =>
+        var orderItems = items.Select(item =>
         {
             var product = products[item.ProductId];
             var subtotal = Math.Round(product.Price * item.Quantity * (1 - item.DiscountPercent / 100), 2);
@@ -76,6 +150,20 @@ public static class OrderEndpoints
             };
         }).ToList();
 
+        return (client, orderItems, null);
+    }
+
+    private static Order BuildOrder(
+        Client client,
+        List<OrderItem> orderItems,
+        IConfiguration configuration,
+        Guid representativeId,
+        string? notes,
+        OrderStatus status,
+        Guid? clientGeneratedId,
+        DateTime? syncedAtUtc,
+        string code)
+    {
         var subtotal = Math.Round(orderItems.Sum(i => i.UnitPriceSnapshot * i.Quantity), 2);
         var discountsTotal = Math.Round(subtotal - orderItems.Sum(i => i.Subtotal), 2);
         var netBeforeTax = subtotal - discountsTotal;
@@ -86,55 +174,35 @@ public static class OrderEndpoints
         var order = new Order
         {
             Id = Guid.NewGuid(),
-            Code = await GenerateUniqueCodeAsync(db),
+            Code = code,
             ClientId = client.Id,
-            RepresentativeId = user.GetRepresentativeId(),
-            Notes = request.Notes,
-            Status = request.IsDraft ? OrderStatus.Draft : OrderStatus.Pending,
+            RepresentativeId = representativeId,
+            ClientGeneratedId = clientGeneratedId,
+            Notes = notes,
+            Status = status,
             Subtotal = subtotal,
             DiscountsTotal = discountsTotal,
             TaxesTotal = taxesTotal,
             Total = total,
             CreatedAtUtc = DateTime.UtcNow,
+            SyncedAtUtc = syncedAtUtc,
             Items = orderItems,
         };
-
-        db.Orders.Add(order);
-        await db.SaveChangesAsync();
-
         order.Client = client;
-        return Results.Created($"/api/orders/{order.Id}", ToResponse(order));
+
+        return order;
     }
 
-    private static async Task<IResult> SyncPendingOrdersAsync(ClaimsPrincipal user, AppDbContext db)
-    {
-        var representativeId = user.GetRepresentativeId();
-
-        var pendingOrders = await db.Orders
-            .Where(o => o.RepresentativeId == representativeId && o.Status == OrderStatus.Pending)
-            .ToListAsync();
-
-        var syncedAt = DateTime.UtcNow;
-        foreach (var order in pendingOrders)
-        {
-            order.Status = OrderStatus.Sent;
-            order.SyncedAtUtc = syncedAt;
-        }
-
-        await db.SaveChangesAsync();
-
-        return Results.Ok(new SyncResultResponse(pendingOrders.Count));
-    }
-
-    private static async Task<string> GenerateUniqueCodeAsync(AppDbContext db)
+    private static async Task<string> GenerateUniqueCodeAsync(AppDbContext db, HashSet<string> usedCodes)
     {
         string code;
         do
         {
             code = $"PED-{Random.Shared.Next(1000, 9999)}";
         }
-        while (await db.Orders.AnyAsync(o => o.Code == code));
+        while (usedCodes.Contains(code) || await db.Orders.AnyAsync(o => o.Code == code));
 
+        usedCodes.Add(code);
         return code;
     }
 

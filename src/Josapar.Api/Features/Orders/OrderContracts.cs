@@ -8,6 +8,13 @@ public record CreateOrderRequest(
     Guid ClientId,
     string? Notes,
     bool IsDraft,
+    IReadOnlyList<CreateOrderItemRequest> Items,
+    Guid? ClientGeneratedId = null);
+
+public record BatchSyncOrderRequest(
+    Guid ClientGeneratedId,
+    Guid ClientId,
+    string? Notes,
     IReadOnlyList<CreateOrderItemRequest> Items);
 
 public record OrderItemResponse(
@@ -34,4 +41,6 @@ public record OrderResponse(
     DateTime? SyncedAtUtc,
     IReadOnlyList<OrderItemResponse> Items);
 
-public record SyncResultResponse(int SyncedCount);
+public record BatchSyncResultResponse(
+    IReadOnlyList<OrderResponse> Created,
+    IReadOnlyList<OrderResponse> AlreadySynced);

@@ -6,6 +6,10 @@ public class Order
     public required string Code { get; set; }
     public Guid ClientId { get; set; }
     public Guid RepresentativeId { get; set; }
+
+    /// <summary>Guid gerado pelo app ao criar o pedido offline — chave de idempotência do sync.</summary>
+    public Guid? ClientGeneratedId { get; set; }
+
     public string? Notes { get; set; }
     public OrderStatus Status { get; set; }
     public decimal Subtotal { get; set; }
