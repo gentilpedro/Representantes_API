@@ -29,3 +29,12 @@ public enum OrderStatus
     Error,
     Draft,
 }
+
+public enum LeadStatus
+{
+    New,
+    Contacted,
+    Qualified,
+    Converted,
+    Lost,
+}
