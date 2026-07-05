@@ -35,6 +35,11 @@ jobs:
              publish/appsettings.Production.json > publish/appsettings.Production.json.tmp
           mv publish/appsettings.Production.json.tmp publish/appsettings.Production.json
 
+      - name: Take app offline (release IIS file locks)
+        run: |
+          echo "App temporarily offline for deployment." > app_offline.htm
+          curl --ftp-pasv -T app_offline.htm --user "${{ secrets.FTP_USERNAME }}:${{ secrets.FTP_PASSWORD }}" "ftp://${{ secrets.FTP_SERVER }}/wwwroot/app_offline.htm"
+
       - name: FTP Deploy
         uses: SamKirkland/FTP-Deploy-Action@v4.3.5
         with:
@@ -43,3 +48,7 @@ jobs:
           password: ${{ secrets.FTP_PASSWORD }}
           local-dir: ./publish/
           server-dir: /wwwroot/
+
+      - name: Bring app back online
+        run: |
+          curl --ftp-pasv --user "${{ secrets.FTP_USERNAME }}:${{ secrets.FTP_PASSWORD }}" -Q "DELE /wwwroot/app_offline.htm" "ftp://${{ secrets.FTP_SERVER }}/"
