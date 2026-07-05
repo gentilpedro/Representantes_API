@@ -16,7 +16,9 @@ public static class SyncEndpoints
 {
     public static RouteGroupBuilder MapSyncEndpoints(this RouteGroupBuilder app)
     {
-        app.MapGet("/summary", GetSummaryAsync);
+        app.MapGet("/summary", GetSummaryAsync)
+            .WithSummary("Resumo de sincronização")
+            .WithDescription("Retorna o resumo de sincronização derivado dos pedidos já enviados pelo representante autenticado.");
         return app;
     }
 

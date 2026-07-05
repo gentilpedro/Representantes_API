@@ -11,9 +11,15 @@ public static class NotificationEndpoints
 {
     public static RouteGroupBuilder MapNotificationEndpoints(this RouteGroupBuilder app)
     {
-        app.MapGet("/", ListNotificationsAsync);
-        app.MapPost("/{id:guid}/read", MarkAsReadAsync);
-        app.MapPost("/read-all", MarkAllAsReadAsync);
+        app.MapGet("/", ListNotificationsAsync)
+            .WithSummary("Listar notificações")
+            .WithDescription("Lista as notificações do representante autenticado.");
+        app.MapPost("/{id:guid}/read", MarkAsReadAsync)
+            .WithSummary("Marcar como lida")
+            .WithDescription("Marca uma notificação específica como lida.");
+        app.MapPost("/read-all", MarkAllAsReadAsync)
+            .WithSummary("Marcar todas como lidas")
+            .WithDescription("Marca todas as notificações do representante autenticado como lidas.");
         return app;
     }
 

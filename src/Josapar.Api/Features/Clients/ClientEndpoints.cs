@@ -9,10 +9,18 @@ public static class ClientEndpoints
 {
     public static RouteGroupBuilder MapClientEndpoints(this RouteGroupBuilder app)
     {
-        app.MapGet("/", ListClientsAsync);
-        app.MapGet("/{id:guid}", GetClientDetailAsync);
-        app.MapPost("/", CreateClientAsync);
-        app.MapPatch("/{id:guid}/favorite", ToggleFavoriteAsync);
+        app.MapGet("/", ListClientsAsync)
+            .WithSummary("Listar clientes")
+            .WithDescription("Retorna todos os clientes cadastrados, com data do último pedido e status de favorito.");
+        app.MapGet("/{id:guid}", GetClientDetailAsync)
+            .WithSummary("Detalhe do cliente")
+            .WithDescription("Retorna dados completos do cliente, incluindo limite/uso de crédito e histórico de pedidos.");
+        app.MapPost("/", CreateClientAsync)
+            .WithSummary("Cadastrar cliente")
+            .WithDescription("Cria um novo cliente. O CNPJ deve ser único.");
+        app.MapPatch("/{id:guid}/favorite", ToggleFavoriteAsync)
+            .WithSummary("Marcar/desmarcar favorito")
+            .WithDescription("Alterna o status de favorito de um cliente.");
 
         return app;
     }

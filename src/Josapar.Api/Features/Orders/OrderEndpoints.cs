@@ -11,9 +11,15 @@ public static class OrderEndpoints
 {
     public static RouteGroupBuilder MapOrderEndpoints(this RouteGroupBuilder app)
     {
-        app.MapGet("/", ListOrdersAsync);
-        app.MapPost("/", CreateOrderAsync);
-        app.MapPost("/batch-sync", BatchSyncOrdersAsync);
+        app.MapGet("/", ListOrdersAsync)
+            .WithSummary("Listar pedidos")
+            .WithDescription("Lista os pedidos do representante autenticado, do mais recente para o mais antigo.");
+        app.MapPost("/", CreateOrderAsync)
+            .WithSummary("Criar pedido")
+            .WithDescription("Cria um pedido (rascunho ou enviado). Idempotente via clientGeneratedId para reenvios sem duplicar.");
+        app.MapPost("/batch-sync", BatchSyncOrdersAsync)
+            .WithSummary("Sincronizar pedidos offline")
+            .WithDescription("Recebe em lote os pedidos criados offline pelo app e persiste os que ainda não existem no servidor.");
 
         return app;
     }
@@ -117,6 +123,15 @@ public static class OrderEndpoints
         if (items.Count == 0)
         {
             return (null, null, Results.BadRequest("O pedido precisa de ao menos um item."));
+        }
+
+        var invalidItems = items
+            .Where(i => i.Quantity <= 0 || i.DiscountPercent < 0 || i.DiscountPercent > 100)
+            .ToList();
+        if (invalidItems.Count > 0)
+        {
+            return (null, null, Results.BadRequest(
+                "Quantidade deve ser maior que zero e desconto deve estar entre 0% e 100%."));
         }
 
         var client = await db.Clients.SingleOrDefaultAsync(c => c.Id == clientId);

@@ -9,9 +9,15 @@ public static class AuthEndpoints
 {
     public static IEndpointRouteBuilder MapAuthEndpoints(this IEndpointRouteBuilder app)
     {
-        app.MapPost("/login", LoginAsync);
-        app.MapPost("/first-access/check", CheckFirstAccessAsync);
-        app.MapPost("/first-access/activate", ActivateAccountAsync);
+        app.MapPost("/login", LoginAsync)
+            .WithSummary("Login")
+            .WithDescription("Autentica com matrícula ou e-mail + senha e retorna o token JWT.");
+        app.MapPost("/first-access/check", CheckFirstAccessAsync)
+            .WithSummary("Checar primeiro acesso")
+            .WithDescription("Verifica se uma matrícula existe e ainda não foi ativada, retornando o nome do representante.");
+        app.MapPost("/first-access/activate", ActivateAccountAsync)
+            .WithSummary("Ativar conta")
+            .WithDescription("Define a senha inicial (conforme a política de senha) e ativa a conta do representante.");
 
         return app;
     }

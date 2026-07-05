@@ -14,8 +14,9 @@ using Josapar.Api.Infrastructure.Persistence;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
-using Scalar.AspNetCore;
+using Microsoft.OpenApi;
 using System.IdentityModel.Tokens.Jwt;
+using System.Reflection;
 using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
@@ -59,7 +60,43 @@ builder.Services
     });
 
 builder.Services.AddAuthorization();
-builder.Services.AddOpenApi();
+builder.Services.AddEndpointsApiExplorer();
+builder.Services.AddSwaggerGen(options =>
+{
+    options.SwaggerDoc("v1", new OpenApiInfo
+    {
+        Title = "Josapar API",
+        Version = "v1",
+        Description = "API que serve o app Flutter josapar_representantes — autenticação, catálogo, clientes, pedidos e sincronização.",
+    });
+
+    options.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
+    {
+        Name = "Authorization",
+        Type = SecuritySchemeType.Http,
+        Scheme = "bearer",
+        BearerFormat = "JWT",
+        In = ParameterLocation.Header,
+        Description = "Informe apenas o token JWT retornado pelo /api/auth/login (sem o prefixo 'Bearer').",
+    });
+    options.AddSecurityRequirement(new OpenApiSecurityRequirement
+    {
+        {
+            new OpenApiSecurityScheme
+            {
+                Reference = new OpenApiReference { Type = ReferenceType.SecurityScheme, Id = "Bearer" },
+            },
+            []
+        },
+    });
+
+    var xmlFile = $"{Assembly.GetExecutingAssembly().GetName().Name}.xml";
+    var xmlPath = Path.Combine(AppContext.BaseDirectory, xmlFile);
+    if (File.Exists(xmlPath))
+    {
+        options.IncludeXmlComments(xmlPath);
+    }
+});
 builder.Services.ConfigureHttpJsonOptions(options =>
     options.SerializerOptions.Converters.Add(new JsonStringEnumConverter(JsonNamingPolicy.CamelCase)));
 
@@ -73,8 +110,12 @@ var app = builder.Build();
 
 if (app.Environment.IsDevelopment())
 {
-    app.MapOpenApi();
-    app.MapScalarApiReference();
+    app.UseSwagger();
+    app.UseSwaggerUI(options =>
+    {
+        options.SwaggerEndpoint("/swagger/v1/swagger.json", "Josapar API v1");
+        options.RoutePrefix = "swagger";
+    });
 
     using var scope = app.Services.CreateScope();
     var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
@@ -85,17 +126,17 @@ app.UseCors(WebAppCorsPolicy);
 app.UseAuthentication();
 app.UseAuthorization();
 
-app.MapGroup("/api/auth").MapAuthEndpoints();
-app.MapGroup("/api/products").MapCatalogEndpoints().RequireAuthorization();
-app.MapGroup("/api/clients").MapClientEndpoints().RequireAuthorization();
-app.MapGroup("/api/orders").MapOrderEndpoints().RequireAuthorization();
-app.MapGroup("/api/leads").MapLeadEndpoints().RequireAuthorization();
-app.MapGroup("/api/agenda").MapAgendaEndpoints().RequireAuthorization();
-app.MapGroup("/api/visits").MapVisitEndpoints().RequireAuthorization();
-app.MapGroup("/api/dashboard").MapDashboardEndpoints().RequireAuthorization();
-app.MapGroup("/api/reports").MapReportsEndpoints().RequireAuthorization();
-app.MapGroup("/api/notifications").MapNotificationEndpoints().RequireAuthorization();
-app.MapGroup("/api/profile").MapProfileEndpoints().RequireAuthorization();
-app.MapGroup("/api/sync").MapSyncEndpoints().RequireAuthorization();
+app.MapGroup("/api/auth").WithTags("Autenticação").MapAuthEndpoints();
+app.MapGroup("/api/products").WithTags("Catálogo").MapCatalogEndpoints().RequireAuthorization();
+app.MapGroup("/api/clients").WithTags("Clientes").MapClientEndpoints().RequireAuthorization();
+app.MapGroup("/api/orders").WithTags("Pedidos").MapOrderEndpoints().RequireAuthorization();
+app.MapGroup("/api/leads").WithTags("Leads").MapLeadEndpoints().RequireAuthorization();
+app.MapGroup("/api/agenda").WithTags("Agenda").MapAgendaEndpoints().RequireAuthorization();
+app.MapGroup("/api/visits").WithTags("Visitas").MapVisitEndpoints().RequireAuthorization();
+app.MapGroup("/api/dashboard").WithTags("Dashboard").MapDashboardEndpoints().RequireAuthorization();
+app.MapGroup("/api/reports").WithTags("Relatórios").MapReportsEndpoints().RequireAuthorization();
+app.MapGroup("/api/notifications").WithTags("Notificações").MapNotificationEndpoints().RequireAuthorization();
+app.MapGroup("/api/profile").WithTags("Perfil").MapProfileEndpoints().RequireAuthorization();
+app.MapGroup("/api/sync").WithTags("Sincronização").MapSyncEndpoints().RequireAuthorization();
 
 app.Run();

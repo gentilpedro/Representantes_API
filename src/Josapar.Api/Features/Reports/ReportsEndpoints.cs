@@ -12,7 +12,9 @@ public static class ReportsEndpoints
 {
     public static RouteGroupBuilder MapReportsEndpoints(this RouteGroupBuilder app)
     {
-        app.MapGet("/summary", GetSummaryAsync);
+        app.MapGet("/summary", GetSummaryAsync)
+            .WithSummary("Resumo de relatórios")
+            .WithDescription("Retorna o resumo de vendas do representante autenticado para o período informado (query string 'period').");
         return app;
     }
 

@@ -11,15 +11,23 @@ public static class AgendaEndpoints
 {
     public static RouteGroupBuilder MapAgendaEndpoints(this RouteGroupBuilder app)
     {
-        app.MapGet("/", GetDailyAgendaAsync);
+        app.MapGet("/", GetDailyAgendaAsync)
+            .WithSummary("Agenda do dia")
+            .WithDescription("Lista as visitas agendadas do representante autenticado para uma data (padrão: hoje, UTC).");
         return app;
     }
 
     public static RouteGroupBuilder MapVisitEndpoints(this RouteGroupBuilder app)
     {
-        app.MapPost("/", CreateVisitAsync);
-        app.MapPost("/{id:guid}/check-in", CheckInAsync);
-        app.MapPost("/{id:guid}/check-out", CheckOutAsync);
+        app.MapPost("/", CreateVisitAsync)
+            .WithSummary("Agendar visita")
+            .WithDescription("Cria uma nova visita agendada para um cliente existente.");
+        app.MapPost("/{id:guid}/check-in", CheckInAsync)
+            .WithSummary("Check-in na visita")
+            .WithDescription("Registra o início da visita, com geolocalização opcional para validação.");
+        app.MapPost("/{id:guid}/check-out", CheckOutAsync)
+            .WithSummary("Check-out da visita")
+            .WithDescription("Conclui uma visita que já está em andamento.");
         return app;
     }
 

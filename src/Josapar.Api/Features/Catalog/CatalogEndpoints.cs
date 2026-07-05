@@ -10,8 +10,12 @@ public static class CatalogEndpoints
 {
     public static RouteGroupBuilder MapCatalogEndpoints(this RouteGroupBuilder app)
     {
-        app.MapGet("/", ListProductsAsync);
-        app.MapGet("/{id:guid}", GetProductDetailAsync);
+        app.MapGet("/", ListProductsAsync)
+            .WithSummary("Listar produtos")
+            .WithDescription("Retorna o catálogo completo de produtos disponíveis.");
+        app.MapGet("/{id:guid}", GetProductDetailAsync)
+            .WithSummary("Detalhe do produto")
+            .WithDescription("Retorna imagens, promoções, especificações técnicas e estoque por depósito de um produto.");
 
         return app;
     }

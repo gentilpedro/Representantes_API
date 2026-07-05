@@ -11,10 +11,18 @@ public static class LeadEndpoints
 {
     public static RouteGroupBuilder MapLeadEndpoints(this RouteGroupBuilder app)
     {
-        app.MapGet("/", ListLeadsAsync);
-        app.MapGet("/{id:guid}", GetLeadAsync);
-        app.MapPost("/", CreateLeadAsync);
-        app.MapPatch("/{id:guid}", UpdateLeadAsync);
+        app.MapGet("/", ListLeadsAsync)
+            .WithSummary("Listar leads")
+            .WithDescription("Lista os leads (prospects) do representante autenticado.");
+        app.MapGet("/{id:guid}", GetLeadAsync)
+            .WithSummary("Detalhe do lead")
+            .WithDescription("Retorna os dados de um lead específico do representante autenticado.");
+        app.MapPost("/", CreateLeadAsync)
+            .WithSummary("Cadastrar lead")
+            .WithDescription("Cria um novo lead vinculado ao representante autenticado.");
+        app.MapPatch("/{id:guid}", UpdateLeadAsync)
+            .WithSummary("Atualizar lead")
+            .WithDescription("Atualiza dados/status de um lead do representante autenticado.");
 
         return app;
     }

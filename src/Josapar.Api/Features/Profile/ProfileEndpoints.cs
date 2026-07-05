@@ -11,7 +11,9 @@ public static class ProfileEndpoints
 {
     public static RouteGroupBuilder MapProfileEndpoints(this RouteGroupBuilder app)
     {
-        app.MapGet("/permissions", GetPermissionsAsync);
+        app.MapGet("/permissions", GetPermissionsAsync)
+            .WithSummary("Permissões do representante")
+            .WithDescription("Retorna as permissões do representante autenticado com base no seu cargo.");
         return app;
     }
 

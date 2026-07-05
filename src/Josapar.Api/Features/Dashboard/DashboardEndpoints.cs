@@ -12,7 +12,9 @@ public static class DashboardEndpoints
 {
     public static RouteGroupBuilder MapDashboardEndpoints(this RouteGroupBuilder app)
     {
-        app.MapGet("/summary", GetSummaryAsync);
+        app.MapGet("/summary", GetSummaryAsync)
+            .WithSummary("Resumo do dashboard")
+            .WithDescription("Retorna os indicadores de desempenho do representante autenticado (vendas, metas, etc.).");
         return app;
     }
 
