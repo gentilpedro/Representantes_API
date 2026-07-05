@@ -31,7 +31,9 @@ jobs:
         run: |
           jq --arg cs "${{ secrets.PROD_POSTGRES_CONNECTION_STRING }}" \
              --arg jwt "${{ secrets.PROD_JWT_SIGNING_KEY }}" \
-             '.ConnectionStrings.Postgres = $cs | .Jwt.SigningKey = $jwt' \
+             --arg swaggerUser "${{ secrets.PROD_SWAGGER_USERNAME }}" \
+             --arg swaggerPassword "${{ secrets.PROD_SWAGGER_PASSWORD }}" \
+             '.ConnectionStrings.Postgres = $cs | .Jwt.SigningKey = $jwt | .Swagger.Username = $swaggerUser | .Swagger.Password = $swaggerPassword' \
              publish/appsettings.Production.json > publish/appsettings.Production.json.tmp
           mv publish/appsettings.Production.json.tmp publish/appsettings.Production.json
 

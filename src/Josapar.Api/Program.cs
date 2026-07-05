@@ -17,6 +17,7 @@ using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi;
 using System.IdentityModel.Tokens.Jwt;
 using System.Reflection;
+using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
@@ -102,15 +103,43 @@ builder.Services.AddCors(options =>
 
 var app = builder.Build();
 
+app.Use(async (context, next) =>
+{
+    if (!context.Request.Path.StartsWithSegments("/swagger"))
+    {
+        await next();
+        return;
+    }
+
+    var swaggerUsername = builder.Configuration["Swagger:Username"];
+    var swaggerPassword = builder.Configuration["Swagger:Password"];
+    if (string.IsNullOrEmpty(swaggerUsername) || string.IsNullOrEmpty(swaggerPassword))
+    {
+        context.Response.StatusCode = StatusCodes.Status503ServiceUnavailable;
+        return;
+    }
+
+    if (TryGetBasicAuthCredentials(context.Request, out var user, out var password)
+        && FixedTimeEquals(user, swaggerUsername)
+        && FixedTimeEquals(password, swaggerPassword))
+    {
+        await next();
+        return;
+    }
+
+    context.Response.Headers.WWWAuthenticate = "Basic realm=\"Swagger\"";
+    context.Response.StatusCode = StatusCodes.Status401Unauthorized;
+});
+
+app.UseSwagger();
+app.UseSwaggerUI(options =>
+{
+    options.SwaggerEndpoint("/swagger/v1/swagger.json", "Josapar API v1");
+    options.RoutePrefix = "swagger";
+});
+
 if (app.Environment.IsDevelopment())
 {
-    app.UseSwagger();
-    app.UseSwaggerUI(options =>
-    {
-        options.SwaggerEndpoint("/swagger/v1/swagger.json", "Josapar API v1");
-        options.RoutePrefix = "swagger";
-    });
-
     using var scope = app.Services.CreateScope();
     var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
     await DbInitializer.SeedAsync(db);
@@ -134,3 +163,40 @@ app.MapGroup("/api/profile").WithTags("Perfil").MapProfileEndpoints().RequireAut
 app.MapGroup("/api/sync").WithTags("Sincronização").MapSyncEndpoints().RequireAuthorization();
 
 app.Run();
+
+static bool TryGetBasicAuthCredentials(HttpRequest request, out string user, out string password)
+{
+    user = "";
+    password = "";
+
+    var header = request.Headers.Authorization.ToString();
+    if (!header.StartsWith("Basic ", StringComparison.OrdinalIgnoreCase))
+    {
+        return false;
+    }
+
+    try
+    {
+        var decoded = Encoding.UTF8.GetString(Convert.FromBase64String(header["Basic ".Length..].Trim()));
+        var separatorIndex = decoded.IndexOf(':');
+        if (separatorIndex < 0)
+        {
+            return false;
+        }
+
+        user = decoded[..separatorIndex];
+        password = decoded[(separatorIndex + 1)..];
+        return true;
+    }
+    catch (FormatException)
+    {
+        return false;
+    }
+}
+
+static bool FixedTimeEquals(string left, string right)
+{
+    var leftBytes = Encoding.UTF8.GetBytes(left);
+    var rightBytes = Encoding.UTF8.GetBytes(right);
+    return leftBytes.Length == rightBytes.Length && CryptographicOperations.FixedTimeEquals(leftBytes, rightBytes);
+}
