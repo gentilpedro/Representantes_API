@@ -24,6 +24,16 @@ jobs:
       - name: Build
         run: dotnet build src/Josapar.Api/Josapar.Api.csproj --configuration Release --no-restore
 
+      - name: Install EF Core tools
+        run: dotnet tool install --global dotnet-ef
+
+      - name: Apply database migrations
+        working-directory: src/Josapar.Api
+        env:
+          ConnectionStrings__Postgres: ${{ secrets.PROD_POSTGRES_CONNECTION_STRING }}
+          Jwt__SigningKey: ${{ secrets.PROD_JWT_SIGNING_KEY }}
+        run: dotnet ef database update --configuration Release
+
       - name: Publish
         run: dotnet publish src/Josapar.Api/Josapar.Api.csproj -c Release -o publish
 
