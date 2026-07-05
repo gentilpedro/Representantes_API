@@ -1,4 +1,4 @@
-# josapar_api
+# Representantes API
 
 API .NET 10 (Minimal APIs) que serve o app Flutter `josapar_representantes` — autenticação, catálogo de produtos, clientes, pedidos e sincronização.
 

@@ -66,7 +66,7 @@ builder.Services.AddSwaggerGen(options =>
 {
     options.SwaggerDoc("v1", new OpenApiInfo
     {
-        Title = "Josapar API",
+        Title = "Representantes API",
         Version = "v1",
         Description = "API que serve o app Flutter josapar_representantes — autenticação, catálogo, clientes, pedidos e sincronização.",
     });
@@ -134,7 +134,7 @@ app.Use(async (context, next) =>
 app.UseSwagger();
 app.UseSwaggerUI(options =>
 {
-    options.SwaggerEndpoint("/swagger/v1/swagger.json", "Josapar API v1");
+    options.SwaggerEndpoint("/swagger/v1/swagger.json", "Representantes API v1");
     options.RoutePrefix = "swagger";
 });
 
