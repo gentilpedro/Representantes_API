@@ -40,7 +40,9 @@ public static class DashboardEndpoints
             .ToListAsync();
         var visitsCompleted = visitsToday.Count(v => v.Status == VisitStatus.Completed);
 
-        var monthStart = new DateTime(now.Year, now.Month, 1);
+        // `new DateTime(y, m, 1)` vem com Kind=Unspecified — o Npgsql rejeita
+        // comparar isso com a coluna timestamptz `CreatedAtUtc`.
+        var monthStart = new DateTime(now.Year, now.Month, 1, 0, 0, 0, DateTimeKind.Utc);
         var monthlyGoalAchieved = await SalesAggregationHelper.SumOrdersAsync(db, representativeId, monthStart, monthStart.AddMonths(1));
         var goal = await db.RepresentativeGoals
             .AsNoTracking()

@@ -49,7 +49,9 @@ public static class ReportsEndpoints
         var averageTicket = ordersCount == 0 ? 0 : totalSales / ordersCount;
         var averageTicketPrev = ordersCountPrev == 0 ? 0 : totalSalesPrev / ordersCountPrev;
 
-        var monthStart = new DateTime(now.Year, now.Month, 1);
+        // `new DateTime(y, m, 1)` vem com Kind=Unspecified — o Npgsql rejeita
+        // comparar isso com a coluna timestamptz `CreatedAtUtc`.
+        var monthStart = new DateTime(now.Year, now.Month, 1, 0, 0, 0, DateTimeKind.Utc);
         var lastMonthStart = monthStart.AddMonths(-1);
         var goalAchievementPercent = await GetGoalAchievementPercentAsync(db, representativeId, monthStart);
         var goalAchievementPercentPrev = await GetGoalAchievementPercentAsync(db, representativeId, lastMonthStart);
@@ -159,7 +161,7 @@ public static class ReportsEndpoints
     private static (DateTime Start, DateTime End) GetPeriodRange(DateTime nowUtc, ReportPeriod period)
     {
         var todayStart = nowUtc.Date;
-        var monthStart = new DateTime(nowUtc.Year, nowUtc.Month, 1);
+        var monthStart = new DateTime(nowUtc.Year, nowUtc.Month, 1, 0, 0, 0, DateTimeKind.Utc);
 
         return period switch
         {
