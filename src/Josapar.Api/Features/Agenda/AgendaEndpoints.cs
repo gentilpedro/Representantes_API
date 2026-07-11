@@ -35,7 +35,11 @@ public static class AgendaEndpoints
     {
         var representativeId = user.GetRepresentativeId();
         var day = date ?? DateOnly.FromDateTime(DateTime.UtcNow);
-        var startOfDay = day.ToDateTime(TimeOnly.MinValue);
+        // DateOnly.ToDateTime produz Kind=Unspecified, mas ScheduledAtUtc é
+        // mapeada como timestamptz — o Npgsql rejeita comparar timestamptz
+        // com um parâmetro Unspecified ("Cannot write DateTime with
+        // Kind=Unspecified to PostgreSQL type 'timestamp with time zone'").
+        var startOfDay = DateTime.SpecifyKind(day.ToDateTime(TimeOnly.MinValue), DateTimeKind.Utc);
         var endOfDay = startOfDay.AddDays(1);
 
         var visits = await db.Visits
