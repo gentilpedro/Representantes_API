@@ -54,7 +54,7 @@ public static class OrderEndpoints
         }
 
         var (client, orderItems, error) = await PrepareOrderAsync(db, request.ClientId, request.Items);
-        if (error is not null) return error;
+        if (error is not null) return error.NotFound ? Results.NotFound(error.Message) : Results.BadRequest(error.Message);
 
         var code = await GenerateUniqueCodeAsync(db, []);
         var now = DateTime.UtcNow;
@@ -72,6 +72,9 @@ public static class OrderEndpoints
     /// <summary>
     /// Recebe a fila de pedidos criados offline e persiste os que ainda não existem no
     /// servidor (idempotente via ClientGeneratedId — reenvios por falha de rede não duplicam).
+    /// Um pedido inválido (cliente/produto que deixou de existir) é rejeitado individualmente
+    /// e reportado em <see cref="BatchSyncResultResponse.Rejected"/> — não pode travar a
+    /// sincronização dos demais pedidos válidos do lote.
     /// </summary>
     private static async Task<IResult> BatchSyncOrdersAsync(
         IReadOnlyList<BatchSyncOrderRequest> requests,
@@ -82,6 +85,7 @@ public static class OrderEndpoints
         var representativeId = user.GetRepresentativeId();
         var created = new List<OrderResponse>();
         var alreadySynced = new List<OrderResponse>();
+        var rejected = new List<BatchSyncRejectedResponse>();
         var usedCodes = new HashSet<string>();
 
         foreach (var request in requests)
@@ -94,7 +98,11 @@ public static class OrderEndpoints
             }
 
             var (client, orderItems, error) = await PrepareOrderAsync(db, request.ClientId, request.Items);
-            if (error is not null) return error;
+            if (error is not null)
+            {
+                rejected.Add(new BatchSyncRejectedResponse(request.ClientGeneratedId, error.Message));
+                continue;
+            }
 
             var code = await GenerateUniqueCodeAsync(db, usedCodes);
             var order = BuildOrder(
@@ -107,7 +115,7 @@ public static class OrderEndpoints
 
         await db.SaveChangesAsync();
 
-        return Results.Ok(new BatchSyncResultResponse(created, alreadySynced));
+        return Results.Ok(new BatchSyncResultResponse(created, alreadySynced, rejected));
     }
 
     private static Task<Order?> FindByClientGeneratedIdAsync(AppDbContext db, Guid representativeId, Guid clientGeneratedId) =>
@@ -117,12 +125,12 @@ public static class OrderEndpoints
             .Include(o => o.Items)
             .SingleOrDefaultAsync(o => o.RepresentativeId == representativeId && o.ClientGeneratedId == clientGeneratedId);
 
-    private static async Task<(Client? Client, List<OrderItem>? Items, IResult? Error)> PrepareOrderAsync(
+    private static async Task<(Client? Client, List<OrderItem>? Items, PrepareOrderError? Error)> PrepareOrderAsync(
         AppDbContext db, Guid clientId, IReadOnlyList<CreateOrderItemRequest> items)
     {
         if (items.Count == 0)
         {
-            return (null, null, Results.BadRequest("O pedido precisa de ao menos um item."));
+            return (null, null, new PrepareOrderError("O pedido precisa de ao menos um item."));
         }
 
         var invalidItems = items
@@ -130,12 +138,12 @@ public static class OrderEndpoints
             .ToList();
         if (invalidItems.Count > 0)
         {
-            return (null, null, Results.BadRequest(
+            return (null, null, new PrepareOrderError(
                 "Quantidade deve ser maior que zero e desconto deve estar entre 0% e 100%."));
         }
 
         var client = await db.Clients.SingleOrDefaultAsync(c => c.Id == clientId);
-        if (client is null) return (null, null, Results.NotFound("Cliente não encontrado."));
+        if (client is null) return (null, null, new PrepareOrderError("Cliente não encontrado.", NotFound: true));
 
         var productIds = items.Select(i => i.ProductId).ToList();
         var products = await db.Products
@@ -145,7 +153,7 @@ public static class OrderEndpoints
         var missingProductIds = productIds.Where(id => !products.ContainsKey(id)).ToList();
         if (missingProductIds.Count > 0)
         {
-            return (null, null, Results.BadRequest($"Produto(s) não encontrado(s): {string.Join(", ", missingProductIds)}."));
+            return (null, null, new PrepareOrderError($"Produto(s) não encontrado(s): {string.Join(", ", missingProductIds)}."));
         }
 
         var orderItems = items.Select(item =>
@@ -243,4 +251,6 @@ public static class OrderEndpoints
             i.Quantity,
             i.DiscountPercent,
             i.Subtotal)).ToList());
+
+    private sealed record PrepareOrderError(string Message, bool NotFound = false);
 }

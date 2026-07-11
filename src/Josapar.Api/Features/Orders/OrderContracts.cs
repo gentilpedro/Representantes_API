@@ -41,6 +41,9 @@ public record OrderResponse(
     DateTime? SyncedAtUtc,
     IReadOnlyList<OrderItemResponse> Items);
 
+public record BatchSyncRejectedResponse(Guid ClientGeneratedId, string Reason);
+
 public record BatchSyncResultResponse(
     IReadOnlyList<OrderResponse> Created,
-    IReadOnlyList<OrderResponse> AlreadySynced);
+    IReadOnlyList<OrderResponse> AlreadySynced,
+    IReadOnlyList<BatchSyncRejectedResponse> Rejected);
