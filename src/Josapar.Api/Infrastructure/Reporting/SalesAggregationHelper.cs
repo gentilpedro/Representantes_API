@@ -14,12 +14,16 @@ public static class SalesAggregationHelper
     public static async Task<decimal> SumOrdersAsync(
         AppDbContext db, Guid representativeId, DateTime startInclusive, DateTime endExclusive)
     {
+        // SumAsync sobre uma coluna decimal não-anulável quebra quando não há
+        // nenhuma linha (o SQL SUM(...) retorna NULL, que o EF/Npgsql não
+        // consegue materializar em `decimal`) — somamos como `decimal?` e
+        // convertemos o "sem pedidos no período" pra 0 explicitamente.
         return await db.Orders
             .Where(o => o.RepresentativeId == representativeId
                 && o.Status != OrderStatus.Draft
                 && o.CreatedAtUtc >= startInclusive
                 && o.CreatedAtUtc < endExclusive)
-            .SumAsync(o => o.Total);
+            .SumAsync(o => (decimal?)o.Total) ?? 0m;
     }
 
     /// <summary>Últimos <paramref name="monthCount"/> meses (incluindo o mês de <paramref name="referenceMonthStart"/>), mais antigo primeiro.</summary>
